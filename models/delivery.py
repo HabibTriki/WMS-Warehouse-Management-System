@@ -1,9 +1,3 @@
-"""
-Delivery request models for WMS.
-
-Handles delivery request creation and tracking for communication with DMS.
-"""
-
 from datetime import datetime
 from enum import Enum
 from typing import Optional

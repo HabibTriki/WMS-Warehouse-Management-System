@@ -1,12 +1,3 @@
-"""
-Fulfillment domain models for WMS.
-
-This module defines the core fulfillment workflow entities:
-- FulfillmentOrder: Main entity tracking the fulfillment lifecycle
-- FulfillmentItem: Individual items within an order
-- DestinationInfo: Delivery destination details
-"""
-
 from datetime import datetime
 from enum import Enum
 from typing import Optional, List

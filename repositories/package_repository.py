@@ -1,9 +1,3 @@
-"""
-Package repository for database operations.
-
-Handles CRUD operations for PackageRequest entities.
-"""
-
 from typing import Optional
 from uuid import UUID
 from datetime import datetime

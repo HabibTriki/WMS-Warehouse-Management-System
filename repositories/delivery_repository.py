@@ -1,9 +1,3 @@
-"""
-Delivery repository for database operations.
-
-Handles CRUD operations for DeliveryRequest entities.
-"""
-
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
