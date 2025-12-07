@@ -116,23 +116,7 @@ ESB3_BASE_URL=http://localhost:8003  # DMS routing
 ### ESB3 → DMS
 - `POST /dms/delivery-request/create` - Create delivery
 
-
-## Project Structure
-
-```
-WMS/
-├── main.py              # FastAPI app
-├── config.py            # Settings
-├── database.py          # SQLite setup
-├── models/              # Domain models
-├── repositories/        # Data access
-├── services/            # Business logic
-├── clients/             # ESB clients (IMS, DMS)
-└── api/routes/          # API endpoints
-```
-
-**Note:** Endpoints requiring ESB1/IMS or ESB3/DMS will fail if those services aren't running.
-
 ## License
 
 Part of ShipOra platform - PoC implementation.
+
