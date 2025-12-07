@@ -34,12 +34,15 @@ class FulfillmentService:
         items: list[FulfillmentItem],
         destination: DestinationInfo
     ) -> FulfillmentOrder:
-
+        # Convert Pydantic models to dicts for JSON storage
+        items_dict = [item.model_dump() for item in items]
+        destination_dict = destination.model_dump()
+        
         fulfillment = FulfillmentOrder(
             order_id=order_id,
             status=FulfillmentStatus.PENDING,
-            items=items,
-            destination=destination
+            items=items_dict,
+            destination=destination_dict
         )
         
         return self.fulfillment_repo.create(fulfillment)
@@ -48,14 +51,13 @@ class FulfillmentService:
         self,
         fulfillment_id: UUID
     ) -> Tuple[FulfillmentOrder, Dict[str, Any]]:
-
         # Get fulfillment order
         fulfillment = self.fulfillment_repo.get_by_id(fulfillment_id)
         if not fulfillment:
             raise ValueError(f"Fulfillment order {fulfillment_id} not found")
         
-        # Prepare items for IMS
-        items = [{"sku": item.sku, "quantity": item.quantity} for item in fulfillment.items]
+        # Prepare items for IMS (items are stored as dicts in JSON)
+        items = [{"sku": item['sku'], "quantity": item['quantity']} for item in fulfillment.items]
         
         # Call IMS via ESB1
         ims_response = await self.ims_client.check_location(items)
@@ -73,7 +75,6 @@ class FulfillmentService:
         self,
         fulfillment_id: UUID
     ) -> Tuple[PackageRequest, FulfillmentOrder]:
-
         # Get fulfillment order
         fulfillment = self.fulfillment_repo.get_by_id(fulfillment_id)
         if not fulfillment:
@@ -91,8 +92,8 @@ class FulfillmentService:
         )
         
         # Packaging algorithm
-        # Calculate weight: sum of quantities × 0.5 kg
-        total_quantity = sum(item.quantity for item in fulfillment.items)
+        # Calculate weight: sum of quantities × 0.5 kg (items are dicts from JSON)
+        total_quantity = sum(item['quantity'] for item in fulfillment.items)
         package.weight = total_quantity * 0.5
         
         # Mark as packaged
@@ -109,7 +110,6 @@ class FulfillmentService:
         self,
         fulfillment_id: UUID
     ) -> Tuple[DeliveryRequest, FulfillmentOrder]:
-
         # Get fulfillment order
         fulfillment = self.fulfillment_repo.get_by_id(fulfillment_id)
         if not fulfillment:
@@ -123,14 +123,14 @@ class FulfillmentService:
         if not fulfillment.warehouse_id:
             raise ValueError("Warehouse not assigned")
         
-        # Create delivery request
+        # Create delivery request (items and destination are dicts from JSON)
         delivery = DeliveryRequest(
             order_id=fulfillment.order_id,
             fulfillment_id=fulfillment.id,
             warehouse_id=fulfillment.warehouse_id,
             status=DeliveryStatus.CREATED,
-            destination=fulfillment.destination.model_dump(),
-            items_summary=[item.model_dump() for item in fulfillment.items]
+            destination=fulfillment.destination,
+            items_summary=fulfillment.items
         )
         delivery = self.delivery_repo.create(delivery)
         
@@ -139,8 +139,8 @@ class FulfillmentService:
             "order_id": fulfillment.order_id,
             "fulfillment_id": str(fulfillment.id),
             "warehouse_id": fulfillment.warehouse_id,
-            "destination": fulfillment.destination.model_dump(),
-            "items": [item.model_dump() for item in fulfillment.items]
+            "destination": fulfillment.destination,
+            "items": fulfillment.items
         }
         
         # Call DMS via ESB3

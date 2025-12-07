@@ -59,12 +59,12 @@ class FulfillmentOrder(SQLModel, table=True):
         description="Assigned warehouse (set after location check)"
     )
     
-    items: List[FulfillmentItem] = SQLField(
+    items: list = SQLField(
         sa_column=Column(JSON),
         description="List of items to fulfill"
     )
     
-    destination: DestinationInfo = SQLField(
+    destination: dict = SQLField(
         sa_column=Column(JSON),
         description="Delivery destination information"
     )
