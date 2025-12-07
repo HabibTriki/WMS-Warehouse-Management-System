@@ -1,0 +1,40 @@
+@startuml WMS_Architecture_Simple
+
+!theme plain
+skinparam componentStyle rectangle
+
+title ShipOra WMS - High Level Architecture
+
+' Main Systems
+component "OMS" as OMS #LightBlue
+component "WMS Service" as WMS #LightGreen
+database "WMS DB" as DB #LightYellow
+component "IMS" as IMS #LightBlue
+component "DMS" as DMS #LightBlue
+
+' Integration Layer
+interface "ESB 1" as ESB1 #Orange
+interface "ESB 3" as ESB3 #Orange
+
+' Flows
+OMS -> WMS : 1. Create Order\n(POST /fulfillment)
+
+WMS <--> DB : Persist Data
+
+WMS --> ESB1 : 2. Check Location
+ESB1 --> IMS
+
+WMS -> WMS : 3. Packaging\n(Internal Calc)
+
+WMS --> ESB3 : 4. Dispatch Delivery
+ESB3 --> DMS
+
+note right of WMS
+  **Workflow:**
+  1. Receive Order
+  2. Locate Item (via IMS)
+  3. Package Item
+  4. Request Delivery (via DMS)
+end note
+
+@enduml
