@@ -1,0 +1,31 @@
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+*.db
+*.db-journal
+
+# Environment
+.env
+.venv
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Distribution
+dist/
+build/
+*.egg-info/
