@@ -8,7 +8,7 @@ from models.package import PackageRequest, PackageStatus
 from models.delivery import DeliveryRequest, DeliveryStatus
 from repositories.fulfillment_repository import FulfillmentRepository
 from repositories.package_repository import PackageRepository
-from repositories.delivery_repository import DeliveryRepository
+# from repositories.delivery_repository import DeliveryRepository
 from clients.ims_client import IMSClient
 from clients.dms_client import DMSClient
 from config import settings
@@ -24,7 +24,7 @@ class FulfillmentService:
     ):
         self.fulfillment_repo = FulfillmentRepository(session)
         self.package_repo = PackageRepository(session)
-        self.delivery_repo = DeliveryRepository(session)
+        # self.delivery_repo = DeliveryRepository(session)
         self.ims_client = ims_client
         self.dms_client = dms_client
     
@@ -47,7 +47,7 @@ class FulfillmentService:
         
         return self.fulfillment_repo.create(fulfillment)
     
-    async def check_and_update_location(
+    async def check_location(
         self,
         fulfillment_id: UUID
     ) -> Tuple[FulfillmentOrder, Dict[str, Any]]:
@@ -58,10 +58,16 @@ class FulfillmentService:
         
         # Prepare items for IMS (items are stored as dicts in JSON)
         items = [{"sku": item['sku'], "quantity": item['quantity']} for item in fulfillment.items]
-        
-        # Call IMS via ESB1
-        ims_response = await self.ims_client.check_location(items)
-        
+        return items , fulfillment
+        # # Call IMS via ESB1
+        # ims_response = await self.ims_client.check_location(items)
+
+    async def update_location(
+        self,
+        fulfillment_id: UUID,
+        ims_response: Dict[str, Any]
+    ) -> FulfillmentOrder:
+        fulfillment = self.fulfillment_repo.get_by_id(fulfillment_id)
         # Update fulfillment with warehouse info
         warehouse_id = ims_response.get("warehouse_id")
         if warehouse_id:
@@ -70,6 +76,7 @@ class FulfillmentService:
             fulfillment = self.fulfillment_repo.update(fulfillment)
         
         return fulfillment, ims_response
+    
     
     async def create_package(
         self,
@@ -109,7 +116,7 @@ class FulfillmentService:
     async def request_delivery(
         self,
         fulfillment_id: UUID
-    ) -> Tuple[DeliveryRequest, FulfillmentOrder]:
+    ) -> dict:
         # Get fulfillment order
         fulfillment = self.fulfillment_repo.get_by_id(fulfillment_id)
         if not fulfillment:
@@ -124,15 +131,15 @@ class FulfillmentService:
             raise ValueError("Warehouse not assigned")
         
         # Create delivery request (items and destination are dicts from JSON)
-        delivery = DeliveryRequest(
-            order_id=fulfillment.order_id,
-            fulfillment_id=fulfillment.id,
-            warehouse_id=fulfillment.warehouse_id,
-            status=DeliveryStatus.CREATED,
-            destination=fulfillment.destination,
-            items_summary=fulfillment.items
-        )
-        delivery = self.delivery_repo.create(delivery)
+        # delivery = DeliveryRequest(
+        #     order_id=fulfillment.order_id,
+        #     fulfillment_id=fulfillment.id,
+        #     warehouse_id=fulfillment.warehouse_id,
+        #     status=DeliveryStatus.CREATED,
+        #     destination=fulfillment.destination,
+        #     items_summary=fulfillment.items
+        # )
+        # delivery = self.delivery_repo.create(delivery)
         
         # Prepare DMS payload
         dms_payload = {
@@ -142,27 +149,29 @@ class FulfillmentService:
             "destination": fulfillment.destination,
             "items": fulfillment.items
         }
+
+        return dms_payload
         
         # Call DMS via ESB3
-        try:
-            dms_response = await self.dms_client.create_delivery_request(dms_payload)
+        # try:
+        #     dms_response = await self.dms_client.create_delivery_request(dms_payload)
             
-            # Update delivery request as sent
-            delivery.status = DeliveryStatus.SENT_TO_DMS
-            delivery.dms_response = dms_response
-            delivery = self.delivery_repo.update(delivery)
+        #     # Update delivery request as sent
+        #     delivery.status = DeliveryStatus.SENT_TO_DMS
+        #     delivery.dms_response = dms_response
+        #     delivery = self.delivery_repo.update(delivery)
             
-            # Update fulfillment status
-            fulfillment.status = FulfillmentStatus.DELIVERY_REQUESTED
-            fulfillment = self.fulfillment_repo.update(fulfillment)
+        #     # Update fulfillment status
+        #     fulfillment.status = FulfillmentStatus.DELIVERY_REQUESTED
+        #     fulfillment = self.fulfillment_repo.update(fulfillment)
             
-        except Exception as e:
-            # Mark delivery as failed
-            delivery.status = DeliveryStatus.FAILED
-            delivery.error_message = str(e)
-            delivery = self.delivery_repo.update(delivery)
+        # except Exception as e:
+        #     # Mark delivery as failed
+        #     delivery.status = DeliveryStatus.FAILED
+        #     delivery.error_message = str(e)
+        #     delivery = self.delivery_repo.update(delivery)
             
-            # ESB3/Camunda integration point: Could trigger compensation workflow
-            raise
+        #     # ESB3/Camunda integration point: Could trigger compensation workflow
+        #     raise
         
-        return delivery, fulfillment
+        # return delivery, fulfillment

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -57,7 +57,7 @@ class CheckLocationRequest(BaseModel):
 class CheckLocationResponse(BaseModel):
     """Response after checking location with IMS."""
     fulfillment: FulfillmentOrder
-    ims_response: dict = Field(..., description="Response from IMS")
+    items: Any 
     message: str = "Location checked successfully"
 
 
@@ -98,8 +98,7 @@ class CreateDeliveryRequestDTO(BaseModel):
 
 class CreateDeliveryResponse(BaseModel):
     """Response after creating delivery request."""
-    delivery_request: DeliveryRequest
-    fulfillment: FulfillmentOrder
+    dms_payload: Any
     message: str = "Delivery request created successfully"
 
 
@@ -109,3 +108,12 @@ class ErrorResponse(BaseModel):
     """Standard error response."""
     error: str
     detail: Optional[str] = None
+
+
+class UpdateLocationResponse(BaseModel):
+    fulfillment: FulfillmentOrder
+    message: str
+
+class UpdateLocationRequest(BaseModel):
+    fulfillment_id: UUID
+    ims_response: dict[str, Any]
