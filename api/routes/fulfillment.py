@@ -11,7 +11,9 @@ from models.schemas import (
     CreatePackageResponse,
     CreateDeliveryRequestDTO,
     CreateDeliveryResponse,
-    ErrorResponse
+    ErrorResponse,
+    UpdateLocationRequest,
+    UpdateLocationResponse
 )
 from services.fulfillment_service import FulfillmentService
 from clients.ims_client import IMSClient
@@ -108,14 +110,11 @@ async def check_location(
                 detail="Either fulfillment_id or order_id must be provided"
             )
         
-        fulfillment, ims_response = await service.check_and_update_location(fulfillment_id)
-        
-        # TODO optional  : ESB1/Camunda integration point: Publish location checked event
-        # await event_bus.publish("fulfillment.location_checked", fulfillment.id)
+        items, fulfillment = await service.check_location(fulfillment_id)
         
         return CheckLocationResponse(
             fulfillment=fulfillment,
-            ims_response=ims_response,
+            items=items,
             message="Location checked successfully"
         )
     except ValueError as e:
@@ -128,6 +127,47 @@ async def check_location(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to check location: {str(e)}"
         )
+    
+@router.post(
+    "/update-location",
+    response_model=UpdateLocationResponse,
+    summary="Update Fulfillment Location (IMS → WMS)"
+)
+async def update_location(
+    request: UpdateLocationRequest,
+    service: FulfillmentService = Depends(get_fulfillment_service)
+) -> UpdateLocationResponse:
+    """
+    Update fulfillment order location using IMS response.
+    Routes: IMS -> ESB1 -> WMS
+    """
+    try:
+        # Determine fulfillment ID
+        fulfillment_id = request.fulfillment_id
+
+        # Call service
+        fulfillment = await service.update_location(
+            fulfillment_id=fulfillment_id,
+            ims_response=request.ims_response
+        )
+
+        return UpdateLocationResponse(
+            fulfillment=fulfillment,
+            ims_response=request.ims_response,
+            message="Fulfillment location updated successfully"
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update location: {str(e)}"
+        )
+
 
 
 @router.post(
@@ -180,14 +220,13 @@ async def create_delivery_request(
     Create and send delivery request to DMS (Step 8)
     """
     try:
-        delivery, fulfillment = await service.request_delivery(request.fulfillment_id)
+        dms_payload = await service.request_delivery(request.fulfillment_id)
         
         # TODO : ESB3/Camunda integration point: Publish delivery requested event
         # await event_bus.publish("fulfillment.delivery_requested", fulfillment.id)
         
         return CreateDeliveryResponse(
-            delivery_request=delivery,
-            fulfillment=fulfillment,
+            dms_payload=dms_payload,
             message="Delivery request created successfully"
         )
     except ValueError as e:
